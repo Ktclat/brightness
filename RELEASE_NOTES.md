@@ -1,10 +1,8 @@
-# Brightness v1.3.0
+# Brightness v1.3.1
 
-- English executable metadata, tray labels, notifications and menu items.
-- Formal file description and product name: **Brightness**. Company metadata: **Ktclat**; the EXE remains unsigned.
-- New login startup value: `Brightness`; enabling startup removes legacy Run records.
-- Added **Remove startup entries** and `--remove-startup`: save `AutoStart=0` and remove current/legacy records from HKCU Run and StartupApproved Run/Run32.
-- Only this app's exact startup value names are removed; unrelated values and keys are preserved.
-- Retains native C implementation, portable INI settings and MIT license.
+- 修正语言范围：软件名称、文件属性、启动项名称保持英文 **Brightness**；托盘菜单、提示和操作说明恢复简体中文。
+- 菜单：开机自启、默认亮度、打开文件路径、删除启动注册信息、退出。
+- 保留启动项清理、便携 INI 和原生 C 实现。
+- 保持 MIT 协议。
 
-Upgrade: exit the old version and replace its EXE, keeping `brightness.ini`. Select **Remove startup entries** to disable startup and clear stale records, then close and reopen Task Manager to refresh its display.
+升级时先退出旧版，替换 EXE，保留 brightness.ini。已启用的自启状态和原亮度配置无需重置。

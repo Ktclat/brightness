@@ -1,26 +1,28 @@
 # Brightness
 
-A minimal native C tray utility for Windows x64, controlling the real backlight of a **Z1 / DZX1560** portable monitor through DDC/CI.
+极简 C 语言 Windows x64 托盘工具，调节 Z1 / DZX1560 便携屏的真实背光。
 
-**[Download latest release](https://github.com/Ktclat/brightness/releases/latest)** · [MIT License](LICENSE)
+**软件名称、EXE 文件属性和启动项名称始终使用英文 Brightness；菜单、提示和使用说明使用简体中文。**
 
-## Usage
+[下载最新版](https://github.com/Ktclat/brightness/releases/latest) · [MIT 协议](LICENSE)
 
-Extract the ZIP and run `Brightness.exe`. No .NET, WinUI, or third-party runtime is needed. There is no main window; the tray icon may be in the taskbar's hidden icons area.
+## 使用
 
-- **Start with Windows**: enable or disable login startup.
-- **Default brightness: xx%**: select, save, and apply a target brightness.
-- **Open file location**: open the application folder.
-- **Remove startup entries**: disable startup and clean current/legacy startup records, including Task Manager approval records.
-- **Exit**: remove the icon and stop the app.
+完整解压 ZIP 后运行 `Brightness.exe`。无需安装 .NET、WinUI 或第三方运行库，没有主窗口。托盘图标可能位于任务栏隐藏图标区。
 
-The executable file description and product name are **Brightness**, with company metadata **Ktclat**. All menu labels and notifications are English. The EXE remains unsigned: company metadata is not a verified digital publisher.
+点击或右键托盘图标：
 
-Only monitors matching `DISPLAY#DZX1560#` are supported. Default brightness is the saved user target, not the monitor's factory setting. The app waits for reconnect/resume events instead of continuously polling, and prevents duplicate resident instances.
+- **开机自启**：勾选或取消登录启动。
+- **默认亮度：xx%**：展开选择预设，保存并立即应用。
+- **打开文件路径**：打开软件所在文件夹。
+- **删除启动注册信息**：关闭自启，清除本软件当前及旧版的启动记录。
+- **退出**：移除托盘图标并结束进程。
 
-## Portable settings
+默认亮度是用户保存的目标值，不是屏幕出厂值。当前仅匹配 `DISPLAY#DZX1560#`，不调节笔记本内置屏幕。后台等待重连、唤醒事件，不持续轮询；同一时间只运行一个驻留实例。
 
-`brightness.ini` stays beside the EXE. Normal operation writes no logs and stores no settings in AppData.
+## 便携配置
+
+配置在 EXE 旁边的 `brightness.ini`，不写入 AppData：
 
 ```ini
 [Settings]
@@ -29,15 +31,15 @@ Resident=1
 AutoStart=0
 ```
 
-- `Brightness`: integer 0–100; invalid ranges fall back to 100.
-- `Resident`: 1 enables the tray and background restoration; 0 applies once and exits.
-- `AutoStart`: 1 enables login startup; 0 disables it. Also controlled by the menu.
+- `Brightness`：0–100 的整数；超出范围时回退到 100。
+- `Resident`：1 为托盘驻留，0 为设置一次后退出。
+- `AutoStart`：1 开启登录启动，0 关闭，也可从菜单切换。
 
-Use a writable folder. Restart after manual configuration changes. After moving the folder, enable startup again if desired to update the path.
+请使用可写文件夹。手动编辑配置后重启程序；亮度也会在下一次重连/唤醒时重读。移动文件夹后，如需自启，请重新启用以更新路径。
 
-## Startup cleanup
+## 清理启动项
 
-The new startup value is `Brightness`. Cleanup removes only the exact value names `Brightness`, `Z1SilentBrightness`, and `PortableBrightnessZ1` from these **current-user** paths:
+当前启动项名称为英文 `Brightness`。清理功能仅删除 `Brightness`、`Z1SilentBrightness`、`PortableBrightnessZ1` 这三个名称在以下当前用户位置的值：
 
 ```text
 HKCU\Software\Microsoft\Windows\CurrentVersion\Run
@@ -45,35 +47,35 @@ HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run
 HKCU\Software\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\Run32
 ```
 
-Unrelated values and entire registry keys are not deleted. Cleanup saves `AutoStart=0` and leaves the app running. Use **Exit** to stop it. Close and reopen Task Manager to refresh cached names. Old versions retain old file descriptions until their EXE is replaced.
+不删除整个注册表键，不影响其他软件。清理会保存 `AutoStart=0`，但保留程序运行；需要停止时选择“退出”。任务管理器显示可能有缓存，关闭并重新打开后刷新。卸载前先清理启动项并退出，再删除软件文件夹。
 
-Before uninstalling, remove startup entries, exit, then delete the folder.
+文件描述和产品名为 **Brightness**，公司元数据为 **Ktclat**。程序未做数字签名，公司字段不代表经过验证的发布者。
 
-## Commands
+## 命令行
 
 ```powershell
-.\Brightness.exe --remove-startup # Remove startup records and save AutoStart=0
-.\Brightness.exe --quit           # Stop the resident instance, including the old C version
-.\Brightness.exe --once           # Apply brightness once without a tray icon
-.\Brightness.exe --check          # Brightness is returned in the exit code
+.\Brightness.exe --remove-startup # 删除本软件启动注册信息
+.\Brightness.exe --quit           # 退出驻留实例（兼容旧 C 版）
+.\Brightness.exe --once           # 设置一次亮度后退出，无托盘
+.\Brightness.exe --check          # 当前亮度通过退出码返回
 $LASTEXITCODE
 ```
 
-`--check`: 0–100 = brightness. Errors: 200 = monitor not found, 201 = hardware control/verification failed, 204 = invalid executable path, 205 = initialization failed, 206 = startup cleanup or INI update failed. Normal successful operations return 0.
+`--check` 返回 0–100 为亮度。错误码：200 未找到目标屏幕，201 硬件控制/验证失败，204 路径异常，205 初始化失败，206 启动项清理或配置写入失败。普通操作成功返回 0。
 
-## Build
+## 构建
 
-Windows x64, PowerShell, MinGW-w64 `gcc` and `windres` in PATH are required. MSYS2 UCRT64's `mingw-w64-ucrt-x86_64-gcc` is recommended.
+需要 Windows x64、PowerShell，以及 PATH 中的 MinGW-w64 `gcc` 和 `windres`。推荐 MSYS2 UCRT64 的 `mingw-w64-ucrt-x86_64-gcc`。
 
 ```powershell
 .\build.ps1
 .\package.ps1
 ```
 
-Uses `-nostdlib` and a custom entry point, importing only Windows system DLLs. Output: `Brightness.exe`; packaging creates ZIP, EXE and SHA-256 checksums in `dist`. Icons and `generate-icons.ps1` are included under MIT.
+使用自定义入口和 `-nostdlib`，仅依赖 Windows 系统 DLL。构建输出 `Brightness.exe`；打包结果包含 ZIP、独立 EXE 和 SHA-256 校验文件。图标和生成脚本同样使用 MIT 协议。
 
-GitHub Actions builds and verifies system-only imports and English version metadata, then publishes `v1.3.0` without replacing existing releases.
+GitHub Actions 自动构建、检查依赖及英文软件名称元数据，并发布 `v1.3.1`，不覆盖已有 Release。
 
-## Validation
+## 验证范围
 
-Tested on the target machine: 75% write/readback, restore 100%, resident startup/exit, single instance and startup registration/removal. This release also checks English metadata and cleanup of current/legacy Run and StartupApproved records. Full mouse menu, physical reconnect, sleep and reboot scenarios have not been tested end to end.
+本机已验证硬件亮度读写、恢复 100%、单实例、驻留退出、自启写入/删除及旧版启动项清理。完整鼠标菜单、实际拔插、睡眠和重启场景尚未全流程验证。

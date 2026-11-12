@@ -1,4 +1,4 @@
-param([string]$Version = '1.3.0')
+param([string]$Version = '1.3.1')
 $ErrorActionPreference = 'Stop'
 Set-Location -LiteralPath $PSScriptRoot
 if (!(Test-Path -LiteralPath '.\Brightness.exe')) { throw 'Run build.ps1 first.' }
@@ -13,4 +13,5 @@ $exe = Join-Path $PSScriptRoot ('dist\Brightness-v' + $Version + '-x64.exe')
 Copy-Item -LiteralPath .\Brightness.exe -Destination $exe
 @($zip,$exe) | ForEach-Object { (Get-FileHash -LiteralPath $_ -Algorithm SHA256).Hash.ToLowerInvariant() + '  ' + [IO.Path]::GetFileName($_) } | Set-Content -LiteralPath .\dist\SHA256SUMS.txt -Encoding ascii
 Get-Item -LiteralPath $zip,$exe | Select-Object Name,Length
+
 

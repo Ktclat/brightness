@@ -48,7 +48,7 @@ static BOOL startup_registry(int enabled){
     RegCloseKey(key);return result==ERROR_SUCCESS;
 }
 static void tray_update(void){
-    wsprintfW(tray.szTip,L"Brightness - Default %d%%",configured_brightness());
+    wsprintfW(tray.szTip,L"Brightness - 默认亮度 %d%%",configured_brightness());
     tray.uFlags=NIF_ICON|NIF_MESSAGE|NIF_TIP|NIF_SHOWTIP;
     Shell_NotifyIconW(NIM_MODIFY,&tray);
 }
@@ -58,14 +58,14 @@ static void tray_add(HWND hwnd){
     tray_icon=(HICON)LoadImageW(GetModuleHandleW(NULL),MAKEINTRESOURCEW(light?3:2),IMAGE_ICON,GetSystemMetrics(SM_CXSMICON),GetSystemMetrics(SM_CYSMICON),0);
     memset(&tray,0,sizeof(tray));tray.cbSize=sizeof(tray);tray.hWnd=hwnd;tray.uID=1;
     tray.uFlags=NIF_ICON|NIF_MESSAGE|NIF_TIP|NIF_SHOWTIP;tray.hIcon=tray_icon;tray.uCallbackMessage=TRAY_MESSAGE;
-    wsprintfW(tray.szTip,L"Brightness - Default %d%%",configured_brightness());
+    wsprintfW(tray.szTip,L"Brightness - 默认亮度 %d%%",configured_brightness());
     if(!Shell_NotifyIconW(NIM_ADD,&tray))Shell_NotifyIconW(NIM_MODIFY,&tray);
     tray.uVersion=NOTIFYICON_VERSION_4;Shell_NotifyIconW(NIM_SETVERSION,&tray);
     if(previous)DestroyIcon(previous);
 }
 static void menu_error(void){
     tray.uFlags=NIF_INFO;lstrcpyW(tray.szInfoTitle,L"Brightness");
-    lstrcpyW(tray.szInfo,L"Could not save settings or update startup entries. Check folder permissions and try again.");
+    lstrcpyW(tray.szInfo,L"无法保存设置或更新启动项，请确认软件文件夹可写入后重试。");
     tray.dwInfoFlags=NIIF_WARNING;Shell_NotifyIconW(NIM_MODIFY,&tray);tray_update();
 }
 static void show_menu(HWND hwnd){
@@ -74,11 +74,11 @@ static void show_menu(HWND hwnd){
     if(menu_open)return;menu=CreatePopupMenu();presets=CreatePopupMenu();
     if(!menu||!presets){if(menu)DestroyMenu(menu);if(presets)DestroyMenu(presets);return;}
     menu_open=1;current=configured_brightness();
-    AppendMenuW(menu,MF_STRING|(auto_enabled?MF_CHECKED:0),1,L"Start with Windows");
+    AppendMenuW(menu,MF_STRING|(auto_enabled?MF_CHECKED:0),1,L"开机自启");
     for(i=0;i<7;i++){wsprintfW(text,L"%d%%",levels[i]);AppendMenuW(presets,MF_STRING|(current==levels[i]?MF_CHECKED:0),100+levels[i],text);}
-    wsprintfW(text,L"Default brightness: %d%%",current);AppendMenuW(menu,MF_POPUP,(UINT_PTR)presets,text);
-    AppendMenuW(menu,MF_SEPARATOR,0,NULL);AppendMenuW(menu,MF_STRING,2,L"Open file location");
-    AppendMenuW(menu,MF_STRING,4,L"Remove startup entries");AppendMenuW(menu,MF_STRING,3,L"Exit");
+    wsprintfW(text,L"默认亮度：%d%%",current);AppendMenuW(menu,MF_POPUP,(UINT_PTR)presets,text);
+    AppendMenuW(menu,MF_SEPARATOR,0,NULL);AppendMenuW(menu,MF_STRING,2,L"打开文件路径");
+    AppendMenuW(menu,MF_STRING,4,L"删除启动注册信息");AppendMenuW(menu,MF_STRING,3,L"退出");
     GetCursorPos(&point);SetForegroundWindow(hwnd);
     command=TrackPopupMenuEx(menu,TPM_RETURNCMD|TPM_RIGHTBUTTON,point.x,point.y,hwnd,NULL);
     PostMessageW(hwnd,WM_NULL,0,0);DestroyMenu(menu);menu_open=0;
@@ -210,4 +210,5 @@ void entry(void){
     if(notification)UnregisterDeviceNotification(notification);
     CloseHandle(thread);CloseHandle(stop_event);CloseHandle(wake_event);CloseHandle(mutex);ExitProcess(0);
 }
+
 

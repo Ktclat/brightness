@@ -1,12 +1,10 @@
-# v1.2.0 · 极简 C 托盘版
+# Brightness v1.3.0
 
-- 原生 C / Windows x64，无 .NET、WinUI 或第三方运行库依赖。
-- 单色应用图标、明暗适配托盘图标。
-- 托盘菜单：开机自启、默认亮度百分比及预设选择、打开文件路径、退出。
-- 使用旁边的 `brightness.ini` 保存配置，默认亮度 100%。
-- 针对 Z1 / DZX1560 便携屏，后台等待重连和唤醒事件。
-- MIT 协议。
+- English executable metadata, tray labels, notifications and menu items.
+- Formal file description and product name: **Brightness**. Company metadata: **Ktclat**; the EXE remains unsigned.
+- New login startup value: `Brightness`; enabling startup removes legacy Run records.
+- Added **Remove startup entries** and `--remove-startup`: save `AutoStart=0` and remove current/legacy records from HKCU Run and StartupApproved Run/Run32.
+- Only this app's exact startup value names are removed; unrelated values and keys are preserved.
+- Retains native C implementation, portable INI settings and MIT license.
 
-推荐下载 ZIP 并完整解压。独立 EXE 也可运行，缺少 INI 时使用默认值。将 ZIP 内的 INI 放在 EXE 旁边可手动调整配置。
-
-本机已验证硬件亮度读写、恢复 100%、驻留退出、自启注册与移除。完整鼠标菜单、拔插、睡眠与重启恢复尚未全流程测试。
+Upgrade: exit the old version and replace its EXE, keeping `brightness.ini`. Select **Remove startup entries** to disable startup and clear stale records, then close and reopen Task Manager to refresh its display.

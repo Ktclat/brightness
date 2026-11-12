@@ -10,7 +10,8 @@
 /* Native tray utility; no CRT or third-party runtime. Settings live beside EXE. */
 void *memset(void *p,int c,size_t n){volatile unsigned char *b=p;while(n--)*b++=(unsigned char)c;return p;}
 void *memcpy(void *p,const void *q,size_t n){unsigned char *b=p;const unsigned char *s=q;while(n--)*b++=*s++;return p;}
-static const WCHAR CLASS_NAME[]=L"Z1SilentBrightness.Native";
+static const WCHAR CLASS_NAME[]=L"Brightness.Native";
+static const WCHAR LEGACY_CLASS_NAME[]=L"Z1SilentBrightness.Native";
 static WCHAR exe[MAX_PATH],ini[MAX_PATH];
 static HANDLE stop_event,wake_event;
 static int target=100,check_only=0,found=0,success=0,reading=201;
@@ -21,16 +22,33 @@ static int auto_enabled,menu_open;
 #define TRAY_MESSAGE (WM_APP+1)
 
 static int configured_brightness(void){int n=(int)GetPrivateProfileIntW(L"Settings",L"Brightness",100,ini);return n>=0&&n<=100?n:100;}
+static BOOL remove_startup_entries(int include_current){
+    const WCHAR *paths[]={L"Software\\Microsoft\\Windows\\CurrentVersion\\Run",L"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\StartupApproved\\Run",L"Software\\Microsoft\\Windows\\CurrentVersion\\Explorer\\StartupApproved\\Run32"};
+    const WCHAR *names[]={L"Brightness",L"Z1SilentBrightness",L"PortableBrightnessZ1"};
+    HKEY key;LSTATUS status;int p,n;BOOL ok=TRUE;
+    for(p=0;p<3;p++){
+        status=RegOpenKeyExW(HKEY_CURRENT_USER,paths[p],0,KEY_SET_VALUE,&key);
+        if(status==ERROR_FILE_NOT_FOUND)continue;
+        if(status!=ERROR_SUCCESS){ok=FALSE;continue;}
+        for(n=include_current?0:1;n<3;n++){
+            status=RegDeleteValueW(key,names[n]);
+            if(status!=ERROR_SUCCESS&&status!=ERROR_FILE_NOT_FOUND)ok=FALSE;
+        }
+        RegCloseKey(key);
+    }
+    return ok;
+}
 static BOOL startup_registry(int enabled){
     HKEY key;WCHAR command[MAX_PATH+16];LSTATUS result;
+    if(!enabled)return remove_startup_entries(1);
+    if(!remove_startup_entries(0))return FALSE;
     result=RegCreateKeyExW(HKEY_CURRENT_USER,L"Software\\Microsoft\\Windows\\CurrentVersion\\Run",0,NULL,0,KEY_SET_VALUE,NULL,&key,NULL);
     if(result!=ERROR_SUCCESS)return FALSE;
-    if(enabled){wsprintfW(command,L"\"%s\"",exe);result=RegSetValueExW(key,L"Z1SilentBrightness",0,REG_SZ,(const BYTE*)command,(lstrlenW(command)+1)*sizeof(WCHAR));}
-    else {result=RegDeleteValueW(key,L"Z1SilentBrightness");if(result==ERROR_FILE_NOT_FOUND)result=ERROR_SUCCESS;}
+    wsprintfW(command,L"\"%s\"",exe);result=RegSetValueExW(key,L"Brightness",0,REG_SZ,(const BYTE*)command,(lstrlenW(command)+1)*sizeof(WCHAR));
     RegCloseKey(key);return result==ERROR_SUCCESS;
 }
 static void tray_update(void){
-    wsprintfW(tray.szTip,L"便携屏亮度 · 默认 %d%%",configured_brightness());
+    wsprintfW(tray.szTip,L"Brightness - Default %d%%",configured_brightness());
     tray.uFlags=NIF_ICON|NIF_MESSAGE|NIF_TIP|NIF_SHOWTIP;
     Shell_NotifyIconW(NIM_MODIFY,&tray);
 }
@@ -40,14 +58,14 @@ static void tray_add(HWND hwnd){
     tray_icon=(HICON)LoadImageW(GetModuleHandleW(NULL),MAKEINTRESOURCEW(light?3:2),IMAGE_ICON,GetSystemMetrics(SM_CXSMICON),GetSystemMetrics(SM_CYSMICON),0);
     memset(&tray,0,sizeof(tray));tray.cbSize=sizeof(tray);tray.hWnd=hwnd;tray.uID=1;
     tray.uFlags=NIF_ICON|NIF_MESSAGE|NIF_TIP|NIF_SHOWTIP;tray.hIcon=tray_icon;tray.uCallbackMessage=TRAY_MESSAGE;
-    wsprintfW(tray.szTip,L"便携屏亮度 · 默认 %d%%",configured_brightness());
+    wsprintfW(tray.szTip,L"Brightness - Default %d%%",configured_brightness());
     if(!Shell_NotifyIconW(NIM_ADD,&tray))Shell_NotifyIconW(NIM_MODIFY,&tray);
     tray.uVersion=NOTIFYICON_VERSION_4;Shell_NotifyIconW(NIM_SETVERSION,&tray);
     if(previous)DestroyIcon(previous);
 }
 static void menu_error(void){
-    tray.uFlags=NIF_INFO;lstrcpyW(tray.szInfoTitle,L"便携屏亮度");
-    lstrcpyW(tray.szInfo,L"设置未保存。请确认软件文件夹可以写入，并重试。");
+    tray.uFlags=NIF_INFO;lstrcpyW(tray.szInfoTitle,L"Brightness");
+    lstrcpyW(tray.szInfo,L"Could not save settings or update startup entries. Check folder permissions and try again.");
     tray.dwInfoFlags=NIIF_WARNING;Shell_NotifyIconW(NIM_MODIFY,&tray);tray_update();
 }
 static void show_menu(HWND hwnd){
@@ -56,10 +74,11 @@ static void show_menu(HWND hwnd){
     if(menu_open)return;menu=CreatePopupMenu();presets=CreatePopupMenu();
     if(!menu||!presets){if(menu)DestroyMenu(menu);if(presets)DestroyMenu(presets);return;}
     menu_open=1;current=configured_brightness();
-    AppendMenuW(menu,MF_STRING|(auto_enabled?MF_CHECKED:0),1,L"开机自启");
+    AppendMenuW(menu,MF_STRING|(auto_enabled?MF_CHECKED:0),1,L"Start with Windows");
     for(i=0;i<7;i++){wsprintfW(text,L"%d%%",levels[i]);AppendMenuW(presets,MF_STRING|(current==levels[i]?MF_CHECKED:0),100+levels[i],text);}
-    wsprintfW(text,L"默认亮度：%d%%",current);AppendMenuW(menu,MF_POPUP,(UINT_PTR)presets,text);
-    AppendMenuW(menu,MF_SEPARATOR,0,NULL);AppendMenuW(menu,MF_STRING,2,L"打开文件路径");AppendMenuW(menu,MF_STRING,3,L"退出");
+    wsprintfW(text,L"Default brightness: %d%%",current);AppendMenuW(menu,MF_POPUP,(UINT_PTR)presets,text);
+    AppendMenuW(menu,MF_SEPARATOR,0,NULL);AppendMenuW(menu,MF_STRING,2,L"Open file location");
+    AppendMenuW(menu,MF_STRING,4,L"Remove startup entries");AppendMenuW(menu,MF_STRING,3,L"Exit");
     GetCursorPos(&point);SetForegroundWindow(hwnd);
     command=TrackPopupMenuEx(menu,TPM_RETURNCMD|TPM_RIGHTBUTTON,point.x,point.y,hwnd,NULL);
     PostMessageW(hwnd,WM_NULL,0,0);DestroyMenu(menu);menu_open=0;
@@ -71,6 +90,10 @@ static void show_menu(HWND hwnd){
     }else if(command==2){
         lstrcpyW(folder,exe);for(i=lstrlenW(folder);i>0;i--)if(folder[i-1]==L'\\'){folder[i]=0;break;}
         ShellExecuteW(hwnd,L"open",folder,NULL,NULL,SW_SHOWNORMAL);
+    }else if(command==4){
+        if(!WritePrivateProfileStringW(L"Settings",L"AutoStart",L"0",ini)){menu_error();return;}
+        auto_enabled=0;
+        if(!remove_startup_entries(1))menu_error();
     }else if(command==3)PostMessageW(hwnd,WM_CLOSE,0,0);
     else if(command>=100&&command<=200){
         wsprintfW(value,L"%u",command-100);
@@ -142,6 +165,7 @@ static LRESULT CALLBACK window_proc(HWND hwnd,UINT message,WPARAM w,LPARAM l){
     if(taskbar_created&&message==taskbar_created){tray_add(hwnd);return 0;}
     if(message==WM_SETTINGCHANGE){tray_add(hwnd);return 0;}
     if(message==TRAY_MESSAGE){UINT action=LOWORD(l);if(action==WM_CONTEXTMENU||action==NIN_SELECT||action==NIN_KEYSELECT)show_menu(hwnd);return 0;}
+    if(message==WM_APP+2){auto_enabled=0;WritePrivateProfileStringW(L"Settings",L"AutoStart",L"0",ini);return 0;}
     if(message==WM_DISPLAYCHANGE||(message==WM_POWERBROADCAST&&(w==PBT_APMRESUMEAUTOMATIC||w==PBT_APMRESUMESUSPEND))){SetEvent(wake_event);return TRUE;}
     if(message==WM_DEVICECHANGE&&(w==DBT_DEVICEARRIVAL||w==DBT_DEVICEREMOVECOMPLETE)){SetEvent(wake_event);return TRUE;}
     if(message==WM_CLOSE){DestroyWindow(hwnd);return 0;}
@@ -155,7 +179,13 @@ void entry(void){
     if(!length||length>=MAX_PATH)ExitProcess(204);
     lstrcpyW(ini,exe);for(i=length;i>0;i--)if(ini[i-1]==L'\\'){ini[i]=0;break;}
     if(i+15>=MAX_PATH)ExitProcess(204);lstrcatW(ini,L"brightness.ini");
-    if(has_arg(L"--quit")){hwnd=FindWindowW(CLASS_NAME,NULL);if(hwnd)PostMessageW(hwnd,WM_CLOSE,0,0);ExitProcess(0);}
+    if(has_arg(L"--quit")){hwnd=FindWindowW(CLASS_NAME,NULL);if(hwnd)PostMessageW(hwnd,WM_CLOSE,0,0);hwnd=FindWindowW(LEGACY_CLASS_NAME,NULL);if(hwnd)PostMessageW(hwnd,WM_CLOSE,0,0);ExitProcess(0);}
+    if(has_arg(L"--remove-startup")){
+        BOOL saved=WritePrivateProfileStringW(L"Settings",L"AutoStart",L"0",ini);
+        BOOL removed=remove_startup_entries(1);
+        hwnd=FindWindowW(CLASS_NAME,NULL);if(hwnd)SendMessageW(hwnd,WM_APP+2,0,0);
+        ExitProcess(saved&&removed?0:206);
+    }
     check_only=has_arg(L"--check");
     resident=(int)GetPrivateProfileIntW(L"Settings",L"Resident",1,ini);
     if(check_only||has_arg(L"--once")||!resident){exit_code=(DWORD)apply();ExitProcess(exit_code);}
